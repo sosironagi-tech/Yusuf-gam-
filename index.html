@@ -2,36 +2,47 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("1. Map Generator Settings")]
-    public GameObject treePrefab;   // Ped ka 3D Model
-    public GameObject housePrefab;  // Ghar ka 3D Model
+    [Header("1. Map & World Settings")]
+    public GameObject treePrefab;   // Ped ka Model
+    public GameObject housePrefab;  // Ghar ka Model
+    public GameObject cloudPrefab;  // Baadal ka Model
     public int totalTrees = 100000; // 1 Lakh Ped
     public int totalHouses = 1000;  // 1000 Ghar
-    public Vector2 terrainSize = new Vector2(5000, 5000); // Map Area
+    public int totalClouds = 500;   // 500 Uandne Wale Baadal
+    public float cloudHeight = 150f; // Badal ki Unchai (Height in Air)
+    public Vector2 terrainSize = new Vector2(5000, 5000); 
 
     [Header("2. Referral & Earn Settings")]
     public int userWallet = 0;
     public string myReferralCode = "USER123";
 
     [Header("3. Car Controller Settings")]
-    public GameObject carObject;    // Aapki Gadi ka 3D Model
-    public float moveSpeed = 20f;   // Aage/Peeche ki Speed
-    public float turnSpeed = 50f;   // Left/Right Murne ki Speed
+    public GameObject carObject;    // Gadi ka Model
+    public float carSpeed = 20f;
+    public float carTurnSpeed = 50f;
+
+    [Header("4. Flying Cycle Settings")]
+    public GameObject cycleObject;  // Flying Cycle ka Model
+    public float cycleSpeed = 15f;  // Aage/Peeche ki Speed
+    public float cycleTurnSpeed = 60f; // Left/Right Turning
+    public float cycleFlySpeed = 10f;  // Upar/Niche udne ki Speed
 
     void Start()
     {
-        // Game start hote hi Map banega
+        // Game start hote hi Duniya, Baadal aur Ghar banenge
         GenerateForest();
         GenerateHouses();
+        GenerateClouds();
     }
 
     void Update()
     {
-        // Har frame mein Gadi Controls check honge
+        // Gadi aur Cycle dono ke controls handle honge
         HandleCarMovement();
+        HandleCycleMovement();
     }
 
-    // --- 1. JUNGLE AUR GHAR GENERATOR ---
+    // --- 1. ENVIRONMENT GENERATORS ---
     void GenerateForest()
     {
         for (int i = 0; i < totalTrees; i++)
@@ -40,7 +51,6 @@ public class GameManager : MonoBehaviour
             float z = Random.Range(0, terrainSize.y);
             Instantiate(treePrefab, new Vector3(x, 0, z), Quaternion.identity);
         }
-        Debug.Log("1 Lakh Ped Generate Ho Gaye!");
     }
 
     void GenerateHouses()
@@ -51,38 +61,69 @@ public class GameManager : MonoBehaviour
             float z = Random.Range(0, terrainSize.y);
             Instantiate(housePrefab, new Vector3(x, 0, z), Quaternion.identity);
         }
-        Debug.Log("1000 Ghar Generate Ho Gaye!");
     }
 
-    // --- 2. GADI CHALANEY KA LOGIC (Aage, Peeche, Left, Right) ---
+    void GenerateClouds()
+    {
+        for (int i = 0; i < totalClouds; i++)
+        {
+            float x = Random.Range(0, terrainSize.x);
+            float z = Random.Range(0, terrainSize.y);
+            // Height (Y-axis) par baadal banenge
+            Instantiate(cloudPrefab, new Vector3(x, cloudHeight, z), Quaternion.identity);
+        }
+        Debug.Log("Hawa mein Baadal Spawn Ho Gaye!");
+    }
+
+    // --- 2. GADI CONTROLS ---
     void HandleCarMovement()
     {
         if (carObject == null) return;
+        float move = Input.GetAxis("Vertical"); 
+        float turn = Input.GetAxis("Horizontal"); 
 
-        // W/S ya Up/Down Arrow keys (Aage / Peeche ke liye)
-        float moveInput = Input.GetAxis("Vertical"); 
-        
-        // A/D ya Left/Right Arrow keys (Left / Right ke liye)
-        float turnInput = Input.GetAxis("Horizontal"); 
-
-        // Gadi ko Aage/Peeche chalana
-        carObject.transform.Translate(Vector3.forward * moveInput * moveSpeed * Time.deltaTime);
-
-        // Gadi ko Left/Right Modna (Rotate karna)
-        carObject.transform.Rotate(Vector3.up * turnInput * turnSpeed * Time.deltaTime);
+        carObject.transform.Translate(Vector3.forward * move * carSpeed * Time.deltaTime);
+        carObject.transform.Rotate(Vector3.up * turn * carTurnSpeed * Time.deltaTime);
     }
 
-    // --- 3. REFERRAL & EARN LOGIC ---
+    // --- 3. HAWA MEIN CYCLE UDJANE KE CONTROLS ---
+    void HandleCycleMovement()
+    {
+        if (cycleObject == null) return;
+
+        // Key Controls:
+        // I / K Keys -> Aage / Peeche
+        // J / L Keys -> Left / Right
+        // Spacebar -> Upar Udna (Up in Air)
+        // Shift -> Niche Aana (Down)
+
+        float forwardInput = 0f;
+        if (Input.GetKey(KeyCode.I)) forwardInput = 1f;
+        if (Input.GetKey(KeyCode.K)) forwardInput = -1f;
+
+        float turnInput = 0f;
+        if (Input.GetKey(KeyCode.L)) turnInput = 1f;
+        if (Input.GetKey(KeyCode.J)) turnInput = -1f;
+
+        float upDownInput = 0f;
+        if (Input.GetKey(KeyCode.Space)) upDownInput = 1f;      // Space se Upar udegi
+        if (Input.GetKey(KeyCode.LeftShift)) upDownInput = -1f; // Shift se Niche aayegi
+
+        // Cycle ko Aage/Peeche aur Turn karna
+        cycleObject.transform.Translate(Vector3.forward * forwardInput * cycleSpeed * Time.deltaTime);
+        cycleObject.transform.Rotate(Vector3.up * turnInput * cycleTurnSpeed * Time.deltaTime);
+
+        // Cycle ko Hawa me Upar/Niche le jana
+        cycleObject.transform.Translate(Vector3.up * upDownInput * cycleFlySpeed * Time.deltaTime);
+    }
+
+    // --- 4. REFERRAL LOGIC ---
     public void RedeemReferralCode(string inputCode)
     {
         if (inputCode == "FRIEND50")
         {
-            userWallet += 50; // Wallet mein ₹50 add honge
-            Debug.Log("Referral Successful! Naya Balance: ₹" + userWallet);
-        }
-        else
-        {
-            Debug.Log("Invalid Referral Code!");
+            userWallet += 50;
+            Debug.Log("Referral Successful! Balance: ₹" + userWallet);
         }
     }
 }
