@@ -1,225 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Racing Game</title>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; user-select: none; }
+using UnityEngine;
+
+public class GameManager : MonoBehaviour
+{
+    [Header("1. Map Generator Settings")]
+    public GameObject treePrefab;   // Ped ka 3D Model
+    public GameObject housePrefab;  // Ghar ka 3D Model
+    public int totalTrees = 100000; // 1 Lakh Ped
+    public int totalHouses = 1000;  // 1000 Ghar
+    public Vector2 terrainSize = new Vector2(5000, 5000); // Map Area
+
+    [Header("2. Referral & Earn Settings")]
+    public int userWallet = 0;
+    public string myReferralCode = "USER123";
+
+    [Header("3. Car Controller Settings")]
+    public GameObject carObject;    // Aapki Gadi ka 3D Model
+    public float moveSpeed = 20f;   // Aage/Peeche ki Speed
+    public float turnSpeed = 50f;   // Left/Right Murne ki Speed
+
+    void Start()
+    {
+        // Game start hote hi Map banega
+        GenerateForest();
+        GenerateHouses();
+    }
+
+    void Update()
+    {
+        // Har frame mein Gadi Controls check honge
+        HandleCarMovement();
+    }
+
+    // --- 1. JUNGLE AUR GHAR GENERATOR ---
+    void GenerateForest()
+    {
+        for (int i = 0; i < totalTrees; i++)
+        {
+            float x = Random.Range(0, terrainSize.x);
+            float z = Random.Range(0, terrainSize.y);
+            Instantiate(treePrefab, new Vector3(x, 0, z), Quaternion.identity);
+        }
+        Debug.Log("1 Lakh Ped Generate Ho Gaye!");
+    }
+
+    void GenerateHouses()
+    {
+        for (int i = 0; i < totalHouses; i++)
+        {
+            float x = Random.Range(0, terrainSize.x);
+            float z = Random.Range(0, terrainSize.y);
+            Instantiate(housePrefab, new Vector3(x, 0, z), Quaternion.identity);
+        }
+        Debug.Log("1000 Ghar Generate Ho Gaye!");
+    }
+
+    // --- 2. GADI CHALANEY KA LOGIC (Aage, Peeche, Left, Right) ---
+    void HandleCarMovement()
+    {
+        if (carObject == null) return;
+
+        // W/S ya Up/Down Arrow keys (Aage / Peeche ke liye)
+        float moveInput = Input.GetAxis("Vertical"); 
         
-        /* Mobile On-Screen Controls */
-        .touch-btn {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.4);
-            border: 2px solid white;
-            border-radius: 50%;
-            width: 65px;
-            height: 65px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: #111;
-            touch-action: manipulation;
+        // A/D ya Left/Right Arrow keys (Left / Right ke liye)
+        float turnInput = Input.GetAxis("Horizontal"); 
+
+        // Gadi ko Aage/Peeche chalana
+        carObject.transform.Translate(Vector3.forward * moveInput * moveSpeed * Time.deltaTime);
+
+        // Gadi ko Left/Right Modna (Rotate karna)
+        carObject.transform.Rotate(Vector3.up * turnInput * turnSpeed * Time.deltaTime);
+    }
+
+    // --- 3. REFERRAL & EARN LOGIC ---
+    public void RedeemReferralCode(string inputCode)
+    {
+        if (inputCode == "FRIEND50")
+        {
+            userWallet += 50; // Wallet mein ₹50 add honge
+            Debug.Log("Referral Successful! Naya Balance: ₹" + userWallet);
         }
-        .touch-btn:active { background: rgba(255, 255, 255, 0.8); }
-
-        #btn-left { bottom: 30px; left: 20px; }
-        #btn-right { bottom: 30px; left: 100px; }
-        #btn-gas { bottom: 100px; right: 30px; background: rgba(76, 175, 80, 0.6); }
-        #btn-brake { bottom: 20px; right: 30px; background: rgba(244, 67, 54, 0.6); }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-</head>
-<body>
-
-    <!-- On-screen Drive Buttons -->
-    <div id="btn-left" class="touch-btn">◀</div>
-    <div id="btn-right" class="touch-btn">▶</div>
-    <div id="btn-gas" class="touch-btn">▲</div>
-    <div id="btn-brake" class="touch-btn">▼</div>
-
-    <script>
-        // 1. Scene, Camera, Renderer
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x70c5ce); // Sky blue
-        scene.fog = new THREE.Fog(0x70c5ce, 40, 180);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // 2. Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(50, 100, 50);
-        scene.add(dirLight);
-
-        // 3. Environment: Green Ground / Farm Land
-        const groundGeo = new THREE.PlaneGeometry(600, 2000);
-        const groundMat = new THREE.MeshLambertMaterial({ color: 0x557a2b });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        scene.add(ground);
-
-        // Main Road
-        const roadGeo = new THREE.PlaneGeometry(20, 2000);
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        const road = new THREE.Mesh(roadGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.y = 0.01;
-        scene.add(road);
-
-        // Road Center Lines
-        for (let z = -1000; z < 1000; z += 15) {
-            const lineGeo = new THREE.PlaneGeometry(0.6, 6);
-            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const line = new THREE.Mesh(lineGeo, lineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.position.set(0, 0.02, z);
-            scene.add(line);
+        else
+        {
+            Debug.Log("Invalid Referral Code!");
         }
-
-        // 4. Adding Trees & Clouds
-        function createTree(x, z) {
-            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.5, 3);
-            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-
-            const leavesGeo = new THREE.ConeGeometry(2, 5, 6);
-            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x2e5a1c });
-            const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-            leaves.position.y = 3.5;
-
-            const tree = new THREE.Group();
-            tree.add(trunk, leaves);
-            tree.position.set(x, 1.5, z);
-            scene.add(tree);
-        }
-
-        function createCloud(x, y, z) {
-            const cloud = new THREE.Group();
-            const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
-            const geo = new THREE.DodecahedronGeometry(3);
-
-            for (let i = 0; i < 3; i++) {
-                const part = new THREE.Mesh(geo, mat);
-                part.position.set(i * 2.5, Math.random() * 0.5, Math.random() * 0.5);
-                cloud.add(part);
-            }
-            cloud.position.set(x, y, z);
-            scene.add(cloud);
-        }
-
-        // Generate Trees and Clouds roadside
-        for (let z = -900; z < 900; z += 25) {
-            createTree(-16 - Math.random() * 20, z);
-            createTree(16 + Math.random() * 20, z);
-            if (z % 100 === 0) {
-                createCloud(-30 + Math.random() * 60, 25 + Math.random() * 10, z);
-            }
-        }
-
-        // 5. Car Setup
-        const carGroup = new THREE.Group();
-
-        // Body
-        const bodyGeo = new THREE.BoxGeometry(2, 0.8, 4);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: 0xe63946 });
-        const carBody = new THREE.Mesh(bodyGeo, bodyMat);
-        carBody.position.y = 0.6;
-        carGroup.add(carBody);
-
-        // Cabin
-        const cabinGeo = new THREE.BoxGeometry(1.5, 0.6, 2);
-        const cabinMat = new THREE.MeshLambertMaterial({ color: 0x1d3557 });
-        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
-        cabin.position.set(0, 1.3, -0.2);
-        carGroup.add(cabin);
-
-        // Wheels
-        const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
-        const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-        const positions = [[-1.1, 0.4, 1.2], [1.1, 0.4, 1.2], [-1.1, 0.4, -1.2], [1.1, 0.4, -1.2]];
-
-        positions.forEach(pos => {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(...pos);
-            carGroup.add(wheel);
-        });
-
-        scene.add(carGroup);
-
-        // 6. Controls Logic (Keyboard & Mobile Touch)
-        const inputs = { forward: false, backward: false, left: false, right: false };
-
-        // Keyboard Event Listeners
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowUp' || e.key === 'w') inputs.forward = true;
-            if (e.key === 'ArrowDown' || e.key === 's') inputs.backward = true;
-            if (e.key === 'ArrowLeft' || e.key === 'a') inputs.left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd') inputs.right = true;
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowUp' || e.key === 'w') inputs.forward = false;
-            if (e.key === 'ArrowDown' || e.key === 's') inputs.backward = false;
-            if (e.key === 'ArrowLeft' || e.key === 'a') inputs.left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd') inputs.right = false;
-        });
-
-        // Touch Button Listeners
-        const bindTouch = (id, key) => {
-            const btn = document.getElementById(id);
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); inputs[key] = true; });
-            btn.addEventListener('touchend', (e) => { e.preventDefault(); inputs[key] = false; });
-            btn.addEventListener('mousedown', () => inputs[key] = true);
-            btn.addEventListener('mouseup', () => inputs[key] = false);
-        };
-
-        bindTouch('btn-gas', 'forward');
-        bindTouch('btn-brake', 'backward');
-        bindTouch('btn-left', 'left');
-        bindTouch('btn-right', 'right');
-
-        // 7. Physics Loop
-        let speed = 0;
-        const maxSpeed = 0.7;
-        const accel = 0.012;
-        const friction = 0.96;
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (inputs.forward && speed < maxSpeed) speed += accel;
-            else if (inputs.backward && speed > -maxSpeed / 2) speed -= accel;
-            else speed *= friction;
-
-            if (inputs.left && Math.abs(speed) > 0.01) carGroup.rotation.y += 0.03 * (speed > 0 ? 1 : -1);
-            if (inputs.right && Math.abs(speed) > 0.01) carGroup.rotation.y -= 0.03 * (speed > 0 ? 1 : -1);
-
-            carGroup.translateZ(-speed);
-
-            // Camera View
-            const camOffset = new THREE.Vector3(0, 4, 9);
-            camOffset.applyQuaternion(carGroup.quaternion);
-            camera.position.copy(carGroup.position).add(camOffset);
-            camera.lookAt(carGroup.position.clone().add(new THREE.Vector3(0, 1, 0)));
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-</body>
-</html>
+    }
+}
